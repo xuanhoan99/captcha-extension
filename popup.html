@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Captcha Test Helper</title>
+    <link rel="stylesheet" href="popup.css">
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Captcha Test Helper</h1>
+        <span id="status">Ready</span>
+      </header>
+
+      <section class="panel">
+        <label>
+          Domain test
+          <input id="allowedHost" placeholder="vd: localhost hoặc example.test">
+        </label>
+        <label>
+          Selector ảnh captcha
+          <input id="captchaSelector" placeholder="vd: img.captcha">
+        </label>
+        <label>
+          Selector input
+          <input id="inputSelector" placeholder="vd: input[name=captcha]">
+        </label>
+        <label>
+          Selector form/nút submit
+          <input id="submitSelector" placeholder="vd: form hoặc button[type=submit]">
+        </label>
+        <label>
+          Số ký tự captcha
+          <input id="captchaLength" type="number" min="0" step="1" placeholder="0 = tự đoán">
+        </label>
+      </section>
+
+      <section class="panel switches">
+        <label class="check">
+          <input type="checkbox" id="autoFill">
+          Tự điền sau khi nhận diện
+        </label>
+        <label class="check">
+          <input type="checkbox" id="autoSubmit">
+          Tự submit sau khi điền
+        </label>
+        <label class="check">
+          <input type="checkbox" id="allowAlphanumeric">
+          Cho phép chữ + số
+        </label>
+      </section>
+
+      <section class="panel">
+        <label>
+          Mã đúng để train mẫu
+          <input id="trainingValue" inputmode="text" placeholder="vd: 1234 hoặc A7K9">
+        </label>
+        <div class="actions">
+          <button id="train">Train</button>
+          <button id="run">Chạy thử</button>
+          <button id="clear">Xóa mẫu</button>
+        </div>
+        <p id="templates">0 mẫu đã lưu</p>
+      </section>
+
+      <section class="panel log-panel">
+        <div class="log-head">
+          <strong>Log test</strong>
+          <button id="clearLog" type="button">Clear</button>
+        </div>
+        <pre id="log"></pre>
+      </section>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+</html>

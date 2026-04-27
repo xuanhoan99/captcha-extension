@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "Owned Captcha Test Helper",
+  "description": "Test helper for OCRing simple 3-digit captchas on systems you own.",
+  "version": "1.0.0",
+  "permissions": ["activeTab", "storage"],
+  "host_permissions": ["<all_urls>"],
+  "action": {
+    "default_title": "Captcha Test Helper",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["ocr.js", "content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

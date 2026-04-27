@@ -1,0 +1,145 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  width: 360px;
+  margin: 0;
+  color: #1f2937;
+  background: #f5f7fb;
+  font: 13px/1.4 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+main {
+  padding: 14px;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+#status {
+  min-width: 76px;
+  color: #3f5f95;
+  text-align: right;
+}
+
+.panel {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  margin-bottom: 10px;
+  border: 1px solid #d8deea;
+  border-radius: 8px;
+  background: #fff;
+}
+
+label {
+  display: grid;
+  gap: 5px;
+  font-weight: 600;
+}
+
+input {
+  width: 100%;
+  min-height: 34px;
+  border: 1px solid #c7d0df;
+  border-radius: 6px;
+  padding: 7px 9px;
+  color: #111827;
+  background: #fff;
+  font: inherit;
+}
+
+input:focus {
+  outline: 2px solid #8bb4ff;
+  outline-offset: 1px;
+}
+
+.switches {
+  gap: 8px;
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.check input {
+  width: 16px;
+  min-height: 16px;
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+button {
+  min-height: 34px;
+  border: 1px solid #2f5f9f;
+  border-radius: 6px;
+  color: #fff;
+  background: #356fb8;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #2d609f;
+}
+
+button#clear {
+  border-color: #9f3b3b;
+  background: #bd4b4b;
+}
+
+#templates {
+  margin: 0;
+  color: #516174;
+}
+
+.log-panel {
+  gap: 8px;
+}
+
+.log-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.log-head button {
+  width: 64px;
+  min-height: 28px;
+  border-color: #68778c;
+  background: #76859a;
+}
+
+#log {
+  min-height: 92px;
+  max-height: 160px;
+  margin: 0;
+  overflow: auto;
+  border: 1px solid #d8deea;
+  border-radius: 6px;
+  padding: 8px;
+  color: #243041;
+  background: #f8fafc;
+  white-space: pre-wrap;
+  font: 12px/1.4 Consolas, "Courier New", monospace;
+}
