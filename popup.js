@@ -3,27 +3,40 @@ const DEFAULTS = {
   captchaSelector: "img.captcha",
   inputSelector: "input[name='captcha']",
   submitSelector: "form",
+  preClickSelector: "",
   captchaLength: 3,
   autoFill: true,
   autoSubmit: false,
   allowAlphanumeric: false,
+  autoWatch: false,
+  submitDelayMs: 0,
+  preClickTimeoutMs: 10000,
   templates: []
 };
+const OCR_TEMPLATE_VERSION = 7;
 
 const fields = {
   allowedHost: document.querySelector("#allowedHost"),
   captchaSelector: document.querySelector("#captchaSelector"),
   inputSelector: document.querySelector("#inputSelector"),
   submitSelector: document.querySelector("#submitSelector"),
+  preClickSelector: document.querySelector("#preClickSelector"),
   captchaLength: document.querySelector("#captchaLength"),
   autoFill: document.querySelector("#autoFill"),
   autoSubmit: document.querySelector("#autoSubmit"),
-  allowAlphanumeric: document.querySelector("#allowAlphanumeric")
+  allowAlphanumeric: document.querySelector("#allowAlphanumeric"),
+  autoWatch: document.querySelector("#autoWatch"),
+  submitDelayMs: document.querySelector("#submitDelayMs"),
+  preClickTimeoutMs: document.querySelector("#preClickTimeoutMs")
 };
 
 const statusEl = document.querySelector("#status");
 const templatesEl = document.querySelector("#templates");
 const logEl = document.querySelector("#log");
+const debugInfoEl = document.querySelector("#debugInfo");
+const debugMaskEl = document.querySelector("#debugMask");
+const debugSegmentsEl = document.querySelector("#debugSegments");
+const templateCountsEl = document.querySelector("#templateCounts");
 
 init();
 
@@ -42,8 +55,11 @@ async function init() {
   renderTemplateCount(settings.templates);
 
   document.querySelector("#train").addEventListener("click", train);
+  document.querySelector("#trainFromInput").addEventListener("click", trainFromInput);
   document.querySelector("#run").addEventListener("click", runOnce);
   document.querySelector("#clear").addEventListener("click", clearTemplates);
+  document.querySelector("#debug").addEventListener("click", debugOcr);
+  document.querySelector("#openPanel").addEventListener("click", openPanel);
   document.querySelector("#clearLog").addEventListener("click", clearLog);
   chrome.runtime.onMessage.addListener((message) => {
     if (message?.type === "CAPTCHA_TEST_LOG") {
@@ -51,6 +67,10 @@ async function init() {
     }
   });
   appendLog("info", "Popup ready");
+}
+
+function isPanelMode() {
+  return new URLSearchParams(location.search).get("panel") === "1";
 }
 
 async function saveSettings() {
@@ -68,24 +88,28 @@ async function saveSettings() {
   setStatus("Saved");
 }
 
+async function openPanel() {
+  await saveSettings();
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (tab?.id) {
+    await chrome.storage.local.set({ targetTabId: tab.id });
+  }
+  await chrome.tabs.create({ url: chrome.runtime.getURL("popup.html?panel=1") });
+}
+
 async function train() {
   await saveSettings();
-  const settings = await chrome.storage.local.get(DEFAULTS);
   const rawValue = document.querySelector("#trainingValue").value.trim();
-  const value = settings.allowAlphanumeric ? rawValue.toUpperCase() : rawValue;
-  const validPattern = settings.allowAlphanumeric ? /^[0-9A-Z]+$/ : /^\d+$/;
+  const value = rawValue;
 
-  if (!validPattern.test(value)) {
-    setStatus(settings.allowAlphanumeric ? "Chỉ chữ/số" : "Chỉ nhập số");
-    appendLog("warn", "Train bị hủy vì mã mẫu không đúng kiểu ký tự", {
-      value: rawValue,
-      allowAlphanumeric: settings.allowAlphanumeric
-    });
+  if (!/^\d{3}$/.test(value)) {
+    setStatus("Nhập 3 số");
+    appendLog("warn", "Train bị hủy vì OCR tối ưu chỉ nhận đúng 3 chữ số", { value: rawValue });
     return;
   }
   appendLog("info", "Bắt đầu train captcha", {
     value,
-    allowAlphanumeric: settings.allowAlphanumeric
+    mode: "3-digit-only"
   });
   const response = await sendToActiveTab({ type: "TRAIN_CAPTCHA", value });
   if (response?.ok) {
@@ -95,6 +119,23 @@ async function train() {
   } else {
     setStatus(response?.error || "Train lỗi");
     appendLog("error", "Train lỗi", response);
+  }
+}
+
+async function trainFromInput() {
+  await saveSettings();
+  appendLog("info", "Bắt đầu train từ input trên trang");
+  const response = await sendToActiveTab({ type: "TRAIN_CAPTCHA_FROM_INPUT" });
+  if (response?.ok) {
+    renderTemplateCount(response.templates);
+    setStatus("Trained");
+    appendLog("info", "Train từ input thành công", {
+      value: response.value,
+      totalTemplates: response.templates.length
+    });
+  } else {
+    setStatus(response?.error || "Train lỗi");
+    appendLog("error", "Train từ input lỗi", response);
   }
 }
 
@@ -118,7 +159,37 @@ async function clearTemplates() {
   appendLog("info", "Đã xóa toàn bộ mẫu OCR");
 }
 
+async function debugOcr() {
+  await saveSettings();
+  appendLog("info", "Bắt đầu lấy preview OCR");
+  const response = await sendToActiveTab({ type: "DEBUG_CAPTCHA_IMAGE" });
+  if (!response?.ok) {
+    setStatus(response?.error || "Debug lỗi");
+    appendLog("error", "Debug OCR lỗi", response);
+    return;
+  }
+
+  renderDebugPreview(response.debug);
+  setStatus("Debug done");
+  appendLog("info", "Debug OCR xong", {
+    width: response.debug.width,
+    height: response.debug.height,
+    inkRatio: response.debug.inkRatio
+  });
+}
+
 async function sendToActiveTab(message) {
+  if (isPanelMode()) {
+    const { targetTabId } = await chrome.storage.local.get({ targetTabId: null });
+    if (targetTabId) {
+      try {
+        return await chrome.tabs.sendMessage(targetTabId, message);
+      } catch (error) {
+        return { ok: false, error: "Tab captcha cũ không còn nhận message. Mở popup từ tab captcha rồi bấm Open Panel lại." };
+      }
+    }
+  }
+
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab?.id) {
     return { ok: false, error: "Không có tab" };
@@ -127,7 +198,10 @@ async function sendToActiveTab(message) {
 }
 
 function renderTemplateCount(templates = []) {
-  templatesEl.textContent = `${templates.length} mẫu đã lưu`;
+  const usableTemplates = templates.filter((template) => template.version === OCR_TEMPLATE_VERSION);
+  const covered = [...new Set(usableTemplates.map((template) => template.digit))].sort().join("");
+  templatesEl.textContent = `${usableTemplates.length} mẫu OCR mới / ${templates.length} tổng | đã có: ${covered || "chưa có"}`;
+  renderDigitCounts(usableTemplates);
 }
 
 function setStatus(text) {
@@ -147,4 +221,35 @@ function appendLog(level, message, details = null) {
 function clearLog() {
   logEl.textContent = "";
   appendLog("info", "Log cleared");
+}
+
+function renderDebugPreview(debug) {
+  debugInfoEl.textContent = `${debug.width}x${debug.height} | ink ${debug.inkRatio}%`;
+  debugMaskEl.src = debug.maskDataUrl;
+  debugMaskEl.style.display = "block";
+  debugSegmentsEl.textContent = "";
+
+  for (const [index, dataUrl] of debug.segmentDataUrls.entries()) {
+    const img = document.createElement("img");
+    img.src = dataUrl;
+    img.alt = `OCR segment ${index + 1}`;
+    debugSegmentsEl.appendChild(img);
+  }
+}
+
+function renderDigitCounts(templates) {
+  const counts = Object.fromEntries(Array.from({ length: 10 }, (_, digit) => [String(digit), 0]));
+  for (const template of templates) {
+    if (counts[template.digit] !== undefined) {
+      counts[template.digit]++;
+    }
+  }
+
+  templateCountsEl.textContent = "";
+  for (const digit of Object.keys(counts)) {
+    const item = document.createElement("div");
+    item.className = `digit-count${counts[digit] < 2 ? " low" : ""}`;
+    item.innerHTML = `<span>${digit}</span><span>${counts[digit]}</span>`;
+    templateCountsEl.appendChild(item);
+  }
 }

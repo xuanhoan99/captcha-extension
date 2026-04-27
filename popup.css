@@ -22,6 +22,12 @@ header {
   margin-bottom: 12px;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 h1 {
   margin: 0;
   font-size: 16px;
@@ -32,6 +38,14 @@ h1 {
   min-width: 76px;
   color: #3f5f95;
   text-align: right;
+}
+
+#openPanel {
+  min-height: 28px;
+  border-color: #68778c;
+  background: #76859a;
+  padding: 4px 8px;
+  font-size: 12px;
 }
 
 .panel {
@@ -83,7 +97,7 @@ input:focus {
 
 .actions {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 8px;
 }
 
@@ -110,6 +124,69 @@ button#clear {
 #templates {
   margin: 0;
   color: #516174;
+}
+
+#templateCounts {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+
+.digit-count {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 28px;
+  border: 1px solid #d8deea;
+  border-radius: 6px;
+  padding: 4px 7px;
+  color: #243041;
+  background: #f8fafc;
+  font-weight: 700;
+}
+
+.digit-count.low {
+  border-color: #e4b45e;
+  background: #fff8e8;
+}
+
+.debug-panel {
+  gap: 8px;
+}
+
+.debug-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+#debugInfo {
+  color: #516174;
+  font-size: 12px;
+}
+
+#debugMask {
+  display: none;
+  width: 100%;
+  image-rendering: pixelated;
+  border: 1px solid #d8deea;
+  border-radius: 6px;
+  background: #111827;
+}
+
+#debugSegments {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+#debugSegments img {
+  width: 100%;
+  image-rendering: pixelated;
+  border: 1px solid #d8deea;
+  border-radius: 6px;
+  background: #111827;
 }
 
 .log-panel {

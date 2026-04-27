@@ -22,8 +22,12 @@ Extension này dùng OCR cục bộ bằng template matching:
 - `Selector ảnh captcha`: ví dụ `img.captcha`, `#captchaImage`.
 - `Selector input`: ví dụ `input[name='captcha']`.
 - `Selector form/nút submit`: ví dụ `form`, `#loginForm`, hoặc `button[type='submit']`.
-- `Số ký tự captcha`: nhập `3`, `4`, `5`... để ép OCR theo độ dài đó, hoặc nhập `0`/để trống để tự đoán theo vùng ký tự tìm được.
-- `Cho phép chữ + số`: bật nếu captcha của bạn có cả `A-Z` và `0-9`. Khi train, chữ thường sẽ được chuẩn hóa thành chữ hoa.
+- `Click trước khi OCR`: selector của input/button cần click để captcha xuất hiện, ví dụ `button.send-code`.
+- OCR hiện đang tối ưu cố định cho captcha đúng `3` ký tự và chỉ gồm chữ số `0-9`.
+- `Số ký tự captcha` và `Cho phép chữ + số` không còn ảnh hưởng trong mode tối ưu 3 số.
+- `Tự phát hiện captcha`: bật để extension theo dõi ảnh captcha xuất hiện, đổi `src`, hoặc reload rồi tự chạy OCR.
+- `Delay submit (ms)`: thời gian chờ sau khi điền captcha trước khi submit. Chỉ có tác dụng khi bật `Tự submit sau khi điền`.
+- `Chờ click enable (ms)`: thời gian tối đa để đợi element trong `Click trước khi OCR` hết `disabled` trước khi click.
 
 ## Lưu ý kỹ thuật
 
@@ -31,8 +35,26 @@ OCR hiện tại phù hợp với captcha số đơn giản, ít nhiễu, các c
 
 Nếu ảnh captcha bị chặn khi vẽ lên canvas, hãy đảm bảo ảnh cùng origin với trang test hoặc server captcha trả header CORS phù hợp.
 
+Với captcha nền tối/chữ màu, OCR dùng bộ lọc sáng/màu, bỏ nhiễu mảnh, chia cố định 3 vùng và so template có chịu lệch pixel. Sau khi nâng cấp OCR, hãy train lại mẫu mới vì mẫu cũ không còn được dùng để nhận diện.
+
 ## Theo dõi log
 
 - Popup có khung `Log test` để xem nhanh từng bước train, OCR, điền input và submit.
 - Mở DevTools trên tab test rồi vào `Console` để xem log chi tiết với prefix `[CaptchaTest]`.
 - Nếu popup đóng, log trong popup sẽ không nhận message mới, nhưng log trong Console của tab vẫn còn.
+- Khi bật `Tự phát hiện captcha`, log sẽ ghi các sự kiện `watch-start`, `dom-change`, hoặc `image-load` để bạn biết vì sao OCR được kích hoạt.
+- Nếu auto-watch không chạy OCR, Console sẽ log lý do bỏ qua như `OCR đang chạy`, `cooldown`, hoặc `captcha chưa đổi`.
+
+## Debug OCR
+
+Bấm `Debug OCR` trong popup để xem ảnh mask sau xử lý và 3 vùng ký tự đã normalize. Nếu preview bị mất nét số hoặc giữ quá nhiều đường nhiễu, cần chỉnh tiếp bộ lọc trong `ocr.js`.
+
+## Open Panel
+
+Bấm `Open Panel` từ popup khi đang đứng ở tab captcha để mở giao diện extension thành tab riêng. Panel sẽ ghi nhớ tab captcha đó để các nút `Train`, `Chạy thử`, `Debug OCR`, `Train từ input` vẫn gửi lệnh về đúng trang test.
+
+## Train nhanh khi OCR sai
+
+Khi `Tự submit sau khi điền` đang tắt, bạn có thể sửa lại mã captcha trực tiếp trong input trên trang rồi bấm `Train từ input` trong popup. Extension sẽ lấy giá trị input hiện tại và train ảnh captcha đang hiển thị, không click tạo captcha mới.
+
+Popup cũng hiển thị số mẫu đã có cho từng digit `0-9`; digit có ít hơn 2 mẫu sẽ được tô nền vàng nhạt.

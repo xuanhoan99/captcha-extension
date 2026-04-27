@@ -3,7 +3,7 @@
   "name": "Owned Captcha Test Helper",
   "description": "Test helper for OCRing simple 3-digit captchas on systems you own.",
   "version": "1.0.0",
-  "permissions": ["activeTab", "storage"],
+  "permissions": ["activeTab", "storage", "tabs"],
   "host_permissions": ["<all_urls>"],
   "action": {
     "default_title": "Captcha Test Helper",
