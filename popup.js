@@ -4,14 +4,14 @@ const DEFAULTS = {
   inputSelector: "input[name='captcha']",
   submitSelector: "form",
   preClickSelector: "",
-  captchaLength: 3,
   enabled: true,
   autoFill: true,
   autoSubmit: false,
-  allowAlphanumeric: false,
   autoWatch: false,
+  targetTabOnly: true,
   submitDelayMs: 0,
   preClickTimeoutMs: 10000,
+  maxTemplates: 400,
   templates: []
 };
 const OCR_TEMPLATE_VERSION = 7;
@@ -22,24 +22,22 @@ const fields = {
   inputSelector: document.querySelector("#inputSelector"),
   submitSelector: document.querySelector("#submitSelector"),
   preClickSelector: document.querySelector("#preClickSelector"),
-  captchaLength: document.querySelector("#captchaLength"),
   enabled: document.querySelector("#enabled"),
   autoFill: document.querySelector("#autoFill"),
   autoSubmit: document.querySelector("#autoSubmit"),
-  allowAlphanumeric: document.querySelector("#allowAlphanumeric"),
   autoWatch: document.querySelector("#autoWatch"),
+  targetTabOnly: document.querySelector("#targetTabOnly"),
   submitDelayMs: document.querySelector("#submitDelayMs"),
-  preClickTimeoutMs: document.querySelector("#preClickTimeoutMs")
+  preClickTimeoutMs: document.querySelector("#preClickTimeoutMs"),
+  maxTemplates: document.querySelector("#maxTemplates")
 };
 
 const statusEl = document.querySelector("#status");
 const templatesEl = document.querySelector("#templates");
 const logEl = document.querySelector("#log");
-const debugInfoEl = document.querySelector("#debugInfo");
-const debugMaskEl = document.querySelector("#debugMask");
-const debugSegmentsEl = document.querySelector("#debugSegments");
 const templateCountsEl = document.querySelector("#templateCounts");
 const templateJsonEl = document.querySelector("#templateJson");
+const templateFileEl = document.querySelector("#templateFile");
 
 init();
 
@@ -57,14 +55,14 @@ async function init() {
   }
   renderTemplateCount(settings.templates);
 
-  document.querySelector("#train").addEventListener("click", train);
   document.querySelector("#trainFromInput").addEventListener("click", trainFromInput);
   document.querySelector("#run").addEventListener("click", runOnce);
   document.querySelector("#clear").addEventListener("click", clearTemplates);
-  document.querySelector("#debug").addEventListener("click", debugOcr);
   document.querySelector("#openPanel").addEventListener("click", openPanel);
   document.querySelector("#exportTemplates").addEventListener("click", exportTemplates);
+  document.querySelector("#chooseTemplateFile").addEventListener("click", chooseTemplateFile);
   document.querySelector("#importTemplates").addEventListener("click", importTemplates);
+  templateFileEl.addEventListener("change", readTemplateFile);
   document.querySelector("#clearLog").addEventListener("click", clearLog);
   chrome.runtime.onMessage.addListener((message) => {
     if (message?.type === "CAPTCHA_TEST_LOG") {
@@ -100,31 +98,6 @@ async function openPanel() {
     await chrome.storage.local.set({ targetTabId: tab.id });
   }
   await chrome.tabs.create({ url: chrome.runtime.getURL("popup.html?panel=1") });
-}
-
-async function train() {
-  await saveSettings();
-  const rawValue = document.querySelector("#trainingValue").value.trim();
-  const value = rawValue;
-
-  if (!/^\d{3}$/.test(value)) {
-    setStatus("Nhập 3 số");
-    appendLog("warn", "Train bị hủy vì OCR tối ưu chỉ nhận đúng 3 chữ số", { value: rawValue });
-    return;
-  }
-  appendLog("info", "Bắt đầu train captcha", {
-    value,
-    mode: "3-digit-only"
-  });
-  const response = await sendToActiveTab({ type: "TRAIN_CAPTCHA", value });
-  if (response?.ok) {
-    renderTemplateCount(response.templates);
-    setStatus("Trained");
-    appendLog("info", "Train thành công", { totalTemplates: response.templates.length });
-  } else {
-    setStatus(response?.error || "Train lỗi");
-    appendLog("error", "Train lỗi", response);
-  }
 }
 
 async function trainFromInput() {
@@ -174,12 +147,37 @@ async function exportTemplates() {
   };
   const json = JSON.stringify(payload, null, 2);
   templateJsonEl.value = json;
-  await navigator.clipboard.writeText(json).catch(() => {});
+  const url = URL.createObjectURL(new Blob([json], { type: "application/json" }));
+  const filename = `captcha-templates-v${OCR_TEMPLATE_VERSION}-${formatDateForFile(new Date())}.json`;
+  await chrome.downloads.download({ url, filename, saveAs: true });
+  window.setTimeout(() => URL.revokeObjectURL(url), 30000);
   setStatus("Exported");
   appendLog("info", "Đã export mẫu train", {
     totalTemplates: templates.length,
-    ocrVersion: OCR_TEMPLATE_VERSION
+    ocrVersion: OCR_TEMPLATE_VERSION,
+    filename
   });
+}
+
+function chooseTemplateFile() {
+  templateFileEl.click();
+}
+
+async function readTemplateFile() {
+  const [file] = templateFileEl.files || [];
+  if (!file) return;
+
+  try {
+    templateJsonEl.value = await file.text();
+    setStatus("File loaded");
+    appendLog("info", "Đã đọc file JSON mẫu", {
+      name: file.name,
+      size: file.size
+    });
+  } catch (error) {
+    setStatus("Đọc file lỗi");
+    appendLog("error", "Đọc file JSON lỗi", { message: error.message });
+  }
 }
 
 async function importTemplates() {
@@ -202,37 +200,20 @@ async function importTemplates() {
       throw new Error(`Không có mẫu hợp lệ cho OCR version ${OCR_TEMPLATE_VERSION}`);
     }
 
-    await chrome.storage.local.set({ templates: validTemplates.slice(-180) });
-    renderTemplateCount(validTemplates.slice(-180));
+    const settings = await chrome.storage.local.get(DEFAULTS);
+    const balanced = balanceTemplates(validTemplates, settings.maxTemplates);
+    await chrome.storage.local.set({ templates: balanced });
+    renderTemplateCount(balanced);
     setStatus("Imported");
     appendLog("info", "Import mẫu train thành công", {
       imported: validTemplates.length,
-      kept: Math.min(validTemplates.length, 180),
+      kept: balanced.length,
       skipped: templates.length - validTemplates.length
     });
   } catch (error) {
     setStatus("Import lỗi");
     appendLog("error", "Import mẫu train lỗi", { message: error.message });
   }
-}
-
-async function debugOcr() {
-  await saveSettings();
-  appendLog("info", "Bắt đầu lấy preview OCR");
-  const response = await sendToActiveTab({ type: "DEBUG_CAPTCHA_IMAGE" });
-  if (!response?.ok) {
-    setStatus(response?.error || "Debug lỗi");
-    appendLog("error", "Debug OCR lỗi", response);
-    return;
-  }
-
-  renderDebugPreview(response.debug);
-  setStatus("Debug done");
-  appendLog("info", "Debug OCR xong", {
-    width: response.debug.width,
-    height: response.debug.height,
-    inkRatio: response.debug.inkRatio
-  });
 }
 
 async function sendToActiveTab(message) {
@@ -280,20 +261,6 @@ function clearLog() {
   appendLog("info", "Log cleared");
 }
 
-function renderDebugPreview(debug) {
-  debugInfoEl.textContent = `${debug.width}x${debug.height} | ink ${debug.inkRatio}%`;
-  debugMaskEl.src = debug.maskDataUrl;
-  debugMaskEl.style.display = "block";
-  debugSegmentsEl.textContent = "";
-
-  for (const [index, dataUrl] of debug.segmentDataUrls.entries()) {
-    const img = document.createElement("img");
-    img.src = dataUrl;
-    img.alt = `OCR segment ${index + 1}`;
-    debugSegmentsEl.appendChild(img);
-  }
-}
-
 function renderDigitCounts(templates) {
   const counts = Object.fromEntries(Array.from({ length: 10 }, (_, digit) => [String(digit), 0]));
   for (const template of templates) {
@@ -321,4 +288,26 @@ function isValidTemplate(template) {
     Array.isArray(template.vector) &&
     template.features
   );
+}
+
+function balanceTemplates(templates, maxTemplates = 400) {
+  const maxPerDigit = Math.max(1, Math.floor((Number(maxTemplates) || 400) / 10));
+  const buckets = Object.fromEntries(Array.from({ length: 10 }, (_, digit) => [String(digit), []]));
+
+  for (const template of templates) {
+    if (buckets[template.digit]) {
+      buckets[template.digit].push(template);
+    }
+  }
+
+  return Object.values(buckets).flatMap((bucket) => {
+    return bucket
+      .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+      .slice(0, maxPerDigit)
+      .reverse();
+  });
+}
+
+function formatDateForFile(date) {
+  return date.toISOString().replace(/[:.]/g, "-");
 }

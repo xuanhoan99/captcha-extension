@@ -97,6 +97,10 @@ textarea:focus {
   outline-offset: 1px;
 }
 
+#templateFile {
+  display: none;
+}
+
 .switches {
   gap: 8px;
 }
@@ -165,45 +169,6 @@ button#clear {
 .digit-count.low {
   border-color: #e4b45e;
   background: #fff8e8;
-}
-
-.debug-panel {
-  gap: 8px;
-}
-
-.debug-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-#debugInfo {
-  color: #516174;
-  font-size: 12px;
-}
-
-#debugMask {
-  display: none;
-  width: 100%;
-  image-rendering: pixelated;
-  border: 1px solid #d8deea;
-  border-radius: 6px;
-  background: #111827;
-}
-
-#debugSegments {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-}
-
-#debugSegments img {
-  width: 100%;
-  image-rendering: pixelated;
-  border: 1px solid #d8deea;
-  border-radius: 6px;
-  background: #111827;
 }
 
 .log-panel {

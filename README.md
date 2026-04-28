@@ -1,70 +1,63 @@
 # Owned Captcha Test Helper
 
-Chrome Extension Manifest V3 để test captcha 3 chữ số trên hệ thống bạn sở hữu.
+Chrome Extension Manifest V3 de test captcha 3 chu so tren he thong ban so huu.
 
-Extension này dùng OCR cục bộ bằng template matching:
+Extension dung OCR local bang template matching, toi uu cho captcha co dinh 3 ky tu va chi gom chu so `0-9`.
 
-- Bạn mở trang test có captcha.
-- Cấu hình selector cho ảnh, input, form/nút submit và số ký tự captcha.
-- Nhập mã đúng hiện tại rồi bấm `Train`.
-- Sau vài mẫu train, bấm `Chạy thử` để extension nhận diện, điền input và submit nếu bạn bật tùy chọn đó.
+## Cai vao Chrome
 
-## Cài vào Chrome
+1. Mo `chrome://extensions`.
+2. Bat `Developer mode`.
+3. Bam `Load unpacked`.
+4. Chon thu muc `D:\Source\captcha-extension`.
 
-1. Mở `chrome://extensions`.
-2. Bật `Developer mode`.
-3. Bấm `Load unpacked`.
-4. Chọn thư mục `D:\Source\captcha-extension`.
+## Cau hinh
 
-## Cấu hình
+- `Domain test`: vi du `localhost`, `127.0.0.1`, hoac domain staging cua ban.
+- `Selector anh captcha`: vi du `img.captcha`, `img[alt="Captcha"]`.
+- `Selector input`: vi du `input[name='captcha']`, `input[maxlength="3"][inputmode="numeric"]`.
+- `Selector form/nut submit`: vi du `form`, `#loginForm`, hoac `button[type='submit']`.
+- `Click truoc khi OCR`: selector cua input/button can click de captcha xuat hien, vi du `button.btn-primary`.
+- `Bat extension`: cong tac tong.
+- `Tu dien sau khi nhan dien`: tu dien ket qua OCR vao input.
+- `Tu submit sau khi dien`: submit sau khi dien.
+- `Tu phat hien captcha`: theo doi captcha xuat hien/doi anh va tu OCR.
+- `Chi chay tab target`: khi da mo panel, auto-watch chi chay tren tab captcha duoc ghi nho.
+- `Delay submit (ms)`: thoi gian cho truoc khi submit.
+- `Cho click enable (ms)`: thoi gian toi da doi nut trong `Click truoc khi OCR` het disabled.
+- `Max mau train`: tong so mau toi da duoc giu, chia deu cho 10 digit.
 
-- `Domain test`: ví dụ `localhost`, `127.0.0.1`, hoặc domain staging của bạn.
-- `Selector ảnh captcha`: ví dụ `img.captcha`, `#captchaImage`.
-- `Selector input`: ví dụ `input[name='captcha']`.
-- `Selector form/nút submit`: ví dụ `form`, `#loginForm`, hoặc `button[type='submit']`.
-- `Click trước khi OCR`: selector của input/button cần click để captcha xuất hiện, ví dụ `button.send-code`.
-- OCR hiện đang tối ưu cố định cho captcha đúng `3` ký tự và chỉ gồm chữ số `0-9`.
-- `Số ký tự captcha` và `Cho phép chữ + số` không còn ảnh hưởng trong mode tối ưu 3 số.
-- `Tự phát hiện captcha`: bật để extension theo dõi ảnh captcha xuất hiện, đổi `src`, hoặc reload rồi tự chạy OCR.
-- `Delay submit (ms)`: thời gian chờ sau khi điền captcha trước khi submit. Chỉ có tác dụng khi bật `Tự submit sau khi điền`.
-- `Chờ click enable (ms)`: thời gian tối đa để đợi element trong `Click trước khi OCR` hết `disabled` trước khi click.
+## Workflow train
 
-## Lưu ý kỹ thuật
+Chi dung `Train tu input`:
 
-OCR hiện tại phù hợp với captcha số đơn giản, ít nhiễu, các chữ số tách tương đối rõ. Nếu để độ dài `0`, các ký tự nên có khoảng cách rõ để extension tự tách vùng. Nếu captcha của bạn có đường nhiễu, xoay/kéo méo mạnh hoặc nền phức tạp, hãy dùng nó như khung extension rồi thay module `ocr.js` bằng engine OCR nội bộ của bạn.
+1. Tat `Tu submit sau khi dien`.
+2. Bam `Chay thu` hoac de auto-watch dien thu.
+3. Neu OCR sai, sua lai 3 so dung trong input captcha tren trang.
+4. Bam `Train tu input`.
 
-Nếu ảnh captcha bị chặn khi vẽ lên canvas, hãy đảm bảo ảnh cùng origin với trang test hoặc server captcha trả header CORS phù hợp.
+Extension se lay gia tri input hien tai va train anh captcha dang hien thi, khong click tao captcha moi.
 
-Với captcha nền tối/chữ màu, OCR dùng bộ lọc sáng/màu, bỏ nhiễu mảnh, chia cố định 3 vùng và so template có chịu lệch pixel. Sau khi nâng cấp OCR, hãy train lại mẫu mới vì mẫu cũ không còn được dùng để nhận diện.
+Khi train, extension dung lock ngan han trong `chrome.storage.local` de tranh hai tab cung ghi de templates.
 
-## Theo dõi log
+## Can bang mau
 
-- Popup có khung `Log test` để xem nhanh từng bước train, OCR, điền input và submit.
-- Mở DevTools trên tab test rồi vào `Console` để xem log chi tiết với prefix `[CaptchaTest]`.
-- Nếu popup đóng, log trong popup sẽ không nhận message mới, nhưng log trong Console của tab vẫn còn.
-- Khi bật `Tự phát hiện captcha`, log sẽ ghi các sự kiện `watch-start`, `dom-change`, hoặc `image-load` để bạn biết vì sao OCR được kích hoạt.
-- Nếu auto-watch không chạy OCR, Console sẽ log lý do bỏ qua như `OCR đang chạy`, `cooldown`, hoặc `captcha chưa đổi`.
+Extension chia deu `Max mau train` cho 10 digit `0-9`. Vi du `400` thi moi digit giu toi da 40 mau. Khi train them, mau moi nhat cua tung digit duoc giu lai de tranh mot so co qua nhieu mau lam lech matcher.
 
-## Debug OCR
+## Export/import mau
 
-Bấm `Debug OCR` trong popup để xem ảnh mask sau xử lý và 3 vùng ký tự đã normalize. Nếu preview bị mất nét số hoặc giữ quá nhiều đường nhiễu, cần chỉnh tiếp bộ lọc trong `ocr.js`.
+- `Export file JSON`: tai file mau train hien tai.
+- `Chon file JSON`: chon file da export tu may khac.
+- `Import file`: import mau vao extension.
+
+Import chi nhan mau dung OCR version hien tai.
 
 ## Open Panel
 
-Bấm `Open Panel` từ popup khi đang đứng ở tab captcha để mở giao diện extension thành tab riêng. Panel sẽ ghi nhớ tab captcha đó để các nút `Train`, `Chạy thử`, `Debug OCR`, `Train từ input` vẫn gửi lệnh về đúng trang test.
+Bam `Open Panel` tu popup khi dang dung o tab captcha de mo giao dien extension thanh tab rieng. Panel se ghi nho tab captcha do de cac nut `Train tu input`, `Chay thu`, `Export`, `Import` van hoat dong dung tab test.
 
-## Bật/tắt extension
+## Log
 
-Checkbox `Bật extension` là công tắc tổng. Khi tắt, extension sẽ không train, OCR, debug hoặc auto-watch nữa, nhưng vẫn giữ toàn bộ cấu hình và mẫu đã train.
-
-## Export/import mẫu train
-
-Bấm `Export mẫu` để copy JSON mẫu train hiện tại vào clipboard và hiển thị trong textarea. Trên máy khác, dán JSON đó vào textarea rồi bấm `Import mẫu`.
-
-Import chỉ nhận mẫu đúng OCR version hiện tại để tránh dùng nhầm dữ liệu cũ.
-
-## Train nhanh khi OCR sai
-
-Khi `Tự submit sau khi điền` đang tắt, bạn có thể sửa lại mã captcha trực tiếp trong input trên trang rồi bấm `Train từ input` trong popup. Extension sẽ lấy giá trị input hiện tại và train ảnh captcha đang hiển thị, không click tạo captcha mới.
-
-Popup cũng hiển thị số mẫu đã có cho từng digit `0-9`; digit có ít hơn 2 mẫu sẽ được tô nền vàng nhạt.
+- Popup co khung `Log test`.
+- DevTools Console cua tab test co log prefix `[CaptchaTest]`.
+- Auto-watch se log ly do bo qua nhu `OCR dang chay`, `cooldown`, `captcha chua doi`, hoac `nut click truoc dang disabled`.

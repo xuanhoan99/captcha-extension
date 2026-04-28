@@ -37,10 +37,6 @@
           Click trước khi OCR
           <input id="preClickSelector" placeholder="vd: input[name=phone] hoặc button.send-code">
         </label>
-        <label>
-          Số ký tự captcha
-          <input id="captchaLength" type="number" min="0" step="1" placeholder="đang tối ưu cố định 3">
-        </label>
       </section>
 
       <section class="panel switches">
@@ -57,20 +53,16 @@
           Tự submit sau khi điền
         </label>
         <label class="check">
-          <input type="checkbox" id="allowAlphanumeric">
-          Cho phép chữ + số (không dùng ở mode 3 số)
-        </label>
-        <label class="check">
           <input type="checkbox" id="autoWatch">
           Tự phát hiện captcha
+        </label>
+        <label class="check">
+          <input type="checkbox" id="targetTabOnly">
+          Chỉ chạy tab target
         </label>
       </section>
 
       <section class="panel">
-        <label>
-          Mã đúng để train mẫu
-          <input id="trainingValue" inputmode="numeric" maxlength="3" placeholder="vd: 213">
-        </label>
         <label>
           Delay submit (ms)
           <input id="submitDelayMs" type="number" min="0" step="100" placeholder="vd: 1000">
@@ -79,12 +71,14 @@
           Chờ click enable (ms)
           <input id="preClickTimeoutMs" type="number" min="0" step="1000" placeholder="vd: 10000">
         </label>
+        <label>
+          Max mẫu train
+          <input id="maxTemplates" type="number" min="10" step="10" placeholder="vd: 400">
+        </label>
         <div class="actions">
-          <button id="train">Train</button>
           <button id="trainFromInput" type="button">Train từ input</button>
           <button id="run">Chạy thử</button>
           <button id="clear">Xóa mẫu</button>
-          <button id="debug" type="button">Debug OCR</button>
         </div>
         <p id="templates">0 mẫu đã lưu</p>
         <div id="templateCounts"></div>
@@ -92,19 +86,12 @@
 
       <section class="panel import-panel">
         <div class="actions">
-          <button id="exportTemplates" type="button">Export mẫu</button>
-          <button id="importTemplates" type="button">Import mẫu</button>
+          <button id="exportTemplates" type="button">Export file JSON</button>
+          <button id="chooseTemplateFile" type="button">Chọn file JSON</button>
+          <button id="importTemplates" type="button">Import file</button>
         </div>
+        <input id="templateFile" type="file" accept="application/json,.json">
         <textarea id="templateJson" placeholder="Dán JSON mẫu train ở đây"></textarea>
-      </section>
-
-      <section class="panel debug-panel">
-        <div class="debug-head">
-          <strong>Preview OCR</strong>
-          <span id="debugInfo">Chưa có ảnh</span>
-        </div>
-        <img id="debugMask" alt="OCR mask preview">
-        <div id="debugSegments"></div>
       </section>
 
       <section class="panel log-panel">

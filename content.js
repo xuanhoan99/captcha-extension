@@ -4,14 +4,14 @@ const DEFAULTS = {
   inputSelector: "input[name='captcha']",
   submitSelector: "form",
   preClickSelector: "",
-  captchaLength: 3,
   enabled: true,
   autoFill: true,
   autoSubmit: false,
-  allowAlphanumeric: false,
   autoWatch: false,
+  targetTabOnly: true,
   submitDelayMs: 0,
   preClickTimeoutMs: 10000,
+  maxTemplates: 400,
   templates: []
 };
 
@@ -22,6 +22,7 @@ let watchInFlight = false;
 let lastCaptchaKey = "";
 let lastWatchRunAt = 0;
 let watchTimer = 0;
+let missingCaptchaRetries = 0;
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   handleMessage(message).then(sendResponse);
@@ -37,12 +38,13 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
     "submitSelector",
     "preClickSelector",
     "allowedHost",
-    "captchaLength",
     "enabled",
+    "targetTabOnly",
     "autoFill",
     "autoSubmit",
     "submitDelayMs",
     "preClickTimeoutMs",
+    "maxTemplates",
     "templates"
   ];
   if (watchKeys.some((key) => changes[key])) {
@@ -55,17 +57,11 @@ setupWatcher();
 async function handleMessage(message) {
   try {
     log("info", "Nhận lệnh từ popup", { type: message.type });
-    if (message.type === "TRAIN_CAPTCHA") {
-      return await trainCaptcha(message.value);
-    }
     if (message.type === "TRAIN_CAPTCHA_FROM_INPUT") {
       return await trainCaptchaFromInput();
     }
     if (message.type === "RUN_CAPTCHA_TEST") {
       return await runCaptchaTest();
-    }
-    if (message.type === "DEBUG_CAPTCHA_IMAGE") {
-      return await debugCaptchaImage();
     }
     return { ok: false, error: "Lệnh không hợp lệ" };
   } catch (error) {
@@ -74,57 +70,37 @@ async function handleMessage(message) {
   }
 }
 
-async function trainCaptcha(value) {
-  const settings = await getSettings();
-  assertEnabled(settings);
-  log("info", "Bắt đầu train", {
-    host: location.hostname,
-    captchaSelector: settings.captchaSelector,
-    preClickSelector: settings.preClickSelector,
-    value,
-    allowAlphanumeric: settings.allowAlphanumeric
-  });
-  assertAllowedHost(settings);
-  await clickBeforeCaptcha(settings);
-  const img = await findReadyImage(settings.captchaSelector);
-  const newTemplates = await CaptchaOcr.train(img, value);
-  const templates = [...settings.templates, ...newTemplates].slice(-180);
-  await chrome.storage.local.set({ templates });
-  log("info", "Train thành công", {
-    added: newTemplates.length,
-    totalTemplates: templates.length
-  });
-  return { ok: true, templates };
-}
-
 async function trainCaptchaFromInput() {
-  const settings = await getSettings();
-  assertEnabled(settings);
-  assertAllowedHost(settings);
-  const input = document.querySelector(settings.inputSelector);
-  if (!input) throw new Error("Không tìm thấy input captcha");
+  return withTrainLock(async () => {
+    const settings = await getSettings();
+    assertEnabled(settings);
+    assertAllowedHost(settings);
+    const input = document.querySelector(settings.inputSelector);
+    if (!input) throw new Error("Không tìm thấy input captcha");
 
-  const value = String(input.value || "").trim();
-  if (!/^\d{3}$/.test(value)) {
-    throw new Error(`Giá trị input phải là đúng 3 chữ số, hiện tại: ${value || "(rỗng)"}`);
-  }
+    const value = String(input.value || "").trim();
+    if (!/^\d{3}$/.test(value)) {
+      throw new Error(`Giá trị input phải là đúng 3 chữ số, hiện tại: ${value || "(rỗng)"}`);
+    }
 
-  log("info", "Bắt đầu train từ input captcha hiện tại", {
-    inputSelector: settings.inputSelector,
-    captchaSelector: settings.captchaSelector,
-    value
+    log("info", "Bắt đầu train từ input captcha hiện tại", {
+      inputSelector: settings.inputSelector,
+      captchaSelector: settings.captchaSelector,
+      value
+    });
+
+    const img = await findReadyImage(settings.captchaSelector);
+    const newTemplates = await CaptchaOcr.train(img, value);
+    const latest = await getSettings();
+    const templates = balanceTemplates([...latest.templates, ...newTemplates], latest.maxTemplates);
+    await chrome.storage.local.set({ templates });
+    log("info", "Train từ input thành công", {
+      value,
+      added: newTemplates.length,
+      totalTemplates: templates.length
+    });
+    return { ok: true, value, templates };
   });
-
-  const img = await findReadyImage(settings.captchaSelector);
-  const newTemplates = await CaptchaOcr.train(img, value);
-  const templates = [...settings.templates, ...newTemplates].slice(-180);
-  await chrome.storage.local.set({ templates });
-  log("info", "Train từ input thành công", {
-    value,
-    added: newTemplates.length,
-    totalTemplates: templates.length
-  });
-  return { ok: true, value, templates };
 }
 
 async function runCaptchaTest(options = {}) {
@@ -136,8 +112,6 @@ async function runCaptchaTest(options = {}) {
     inputSelector: settings.inputSelector,
     submitSelector: settings.submitSelector,
     preClickSelector: settings.preClickSelector,
-    captchaLength: normalizeCaptchaLength(settings.captchaLength) || "auto",
-    allowAlphanumeric: settings.allowAlphanumeric,
     autoFill: settings.autoFill,
     autoSubmit: settings.autoSubmit,
     submitDelayMs: normalizeDelay(settings.submitDelayMs),
@@ -176,34 +150,6 @@ async function runCaptchaTest(options = {}) {
   return { ok: true, text };
 }
 
-async function debugCaptchaImage() {
-  const settings = await getSettings();
-  assertEnabled(settings);
-  log("info", "Bắt đầu debug ảnh OCR", {
-    captchaSelector: settings.captchaSelector,
-    preClickSelector: settings.preClickSelector
-  });
-  assertAllowedHost(settings);
-
-  let img = document.querySelector(settings.captchaSelector);
-  if (!img && settings.preClickSelector) {
-    const clicked = await clickBeforeCaptcha(settings);
-    if (!clicked) {
-      throw new Error("Element cần click chưa sẵn sàng");
-    }
-  }
-
-  img = await findReadyImage(settings.captchaSelector);
-  const debug = await CaptchaOcr.debug(img);
-  log("info", "Debug ảnh OCR xong", {
-    width: debug.width,
-    height: debug.height,
-    inkRatio: debug.inkRatio,
-    segments: debug.segmentDataUrls.length
-  });
-  return { ok: true, debug };
-}
-
 async function getSettings() {
   return chrome.storage.local.get(DEFAULTS);
 }
@@ -224,9 +170,14 @@ function assertEnabled(settings) {
   }
 }
 
-async function findReadyImage(selector) {
-  const img = await waitForElement(selector, 6000);
-  if (!img) throw new Error("Không tìm thấy ảnh captcha");
+async function findReadyImage(selector, options = {}) {
+  const timeoutMs = options.timeoutMs ?? 6000;
+  const throwOnMissing = options.throwOnMissing ?? true;
+  const img = await waitForElement(selector, timeoutMs);
+  if (!img) {
+    if (throwOnMissing) throw new Error("Không tìm thấy ảnh captcha");
+    return null;
+  }
   if (img.complete && img.naturalWidth > 0) {
     log("info", "Ảnh captcha đã sẵn sàng", {
       width: img.naturalWidth,
@@ -302,11 +253,6 @@ function submit(selector) {
   target.click();
 }
 
-function normalizeCaptchaLength(value) {
-  const parsed = Number.parseInt(value, 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
-}
-
 async function setupWatcher() {
   stopWatcher();
   const settings = await getSettings();
@@ -316,6 +262,10 @@ async function setupWatcher() {
   }
   if (!settings.autoWatch) {
     log("info", "Auto watch đang tắt");
+    return;
+  }
+  if (settings.targetTabOnly && !(await isCurrentTargetTab())) {
+    log("info", "Auto watch không chạy vì tab này không phải target tab");
     return;
   }
 
@@ -401,6 +351,10 @@ async function runWatchedCaptcha(reason, options = {}) {
       return;
     }
     if (!settings.autoWatch) return;
+    if (settings.targetTabOnly && !(await isCurrentTargetTab())) {
+      log("info", "Auto watch bỏ qua vì tab này không phải target tab", { reason });
+      return;
+    }
     assertAllowedHost(settings);
 
     const clicked = await clickBeforeCaptcha(settings, { skipWhenDisabled: true });
@@ -410,7 +364,23 @@ async function runWatchedCaptcha(reason, options = {}) {
       });
       return;
     }
-    const img = await findReadyImage(settings.captchaSelector);
+    const img = await findReadyImage(settings.captchaSelector, {
+      timeoutMs: options.shortWait ? 1500 : 6000,
+      throwOnMissing: false
+    });
+    if (!img) {
+      missingCaptchaRetries++;
+      log("info", "Auto watch chưa thấy ảnh captcha, sẽ thử lại", {
+        reason,
+        retry: missingCaptchaRetries,
+        selector: settings.captchaSelector
+      });
+      if (missingCaptchaRetries <= 12) {
+        scheduleWatchRun("captcha-missing-retry", { force: true, shortWait: true });
+      }
+      return;
+    }
+    missingCaptchaRetries = 0;
     const captchaKey = getCaptchaKey(img);
     if (!options.force && captchaKey === lastCaptchaKey) {
       log("info", "Auto watch bỏ qua vì captcha chưa đổi", { reason, captchaKey });
@@ -513,6 +483,51 @@ function sleep(ms) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
+async function withTrainLock(callback) {
+  const lockId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  const acquired = await acquireTrainLock(lockId);
+  if (!acquired) {
+    throw new Error("Đang có tab khác train mẫu, thử lại sau vài giây");
+  }
+
+  try {
+    return await callback();
+  } finally {
+    await releaseTrainLock(lockId);
+  }
+}
+
+async function acquireTrainLock(lockId) {
+  const expiresAt = Date.now() + 8000;
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const { trainLock } = await chrome.storage.local.get({ trainLock: null });
+    if (!trainLock || trainLock.expiresAt < Date.now()) {
+      await chrome.storage.local.set({ trainLock: { id: lockId, expiresAt } });
+      const check = await chrome.storage.local.get({ trainLock: null });
+      if (check.trainLock?.id === lockId) return true;
+    }
+    await sleep(150);
+  }
+  return false;
+}
+
+async function releaseTrainLock(lockId) {
+  const { trainLock } = await chrome.storage.local.get({ trainLock: null });
+  if (trainLock?.id === lockId) {
+    await chrome.storage.local.remove("trainLock");
+  }
+}
+
+async function isCurrentTargetTab() {
+  const { targetTabId } = await chrome.storage.local.get({ targetTabId: null });
+  if (!targetTabId) return true;
+  return new Promise((resolve) => {
+    chrome.runtime.sendMessage({ type: "GET_CURRENT_TAB_ID" }, (response) => {
+      resolve(!chrome.runtime.lastError && response?.tabId === targetTabId);
+    });
+  });
+}
+
 function log(level, message, details = null) {
   const payload = {
     type: "CAPTCHA_TEST_LOG",
@@ -557,4 +572,22 @@ function fingerprintImage(img) {
   } catch (error) {
     return `${Date.now()}`;
   }
+}
+
+function balanceTemplates(templates, maxTemplates = 400) {
+  const maxPerDigit = Math.max(1, Math.floor((Number(maxTemplates) || 400) / 10));
+  const buckets = Object.fromEntries(Array.from({ length: 10 }, (_, digit) => [String(digit), []]));
+
+  for (const template of templates) {
+    if (buckets[template.digit]) {
+      buckets[template.digit].push(template);
+    }
+  }
+
+  return Object.values(buckets).flatMap((bucket) => {
+    return bucket
+      .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+      .slice(0, maxPerDigit)
+      .reverse();
+  });
 }

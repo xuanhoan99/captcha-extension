@@ -443,18 +443,6 @@ const CaptchaOcr = (() => {
     }, usableTemplates)).join("");
   }
 
-  async function debug(img) {
-    const binary = await imageToBinary(img);
-    const boxes = segmentDigits(binary, DIGIT_COUNT);
-    return {
-      width: binary.width,
-      height: binary.height,
-      inkRatio: Math.round(getInkRatio(binary.pixels) * 10000) / 100,
-      maskDataUrl: renderMask(binary, boxes),
-      segmentDataUrls: boxes.map((box) => renderSegment(binary, box))
-    };
-  }
-
   function match(sample, templates) {
     const target = patternToBits(sample.pattern);
     const targetVector = sample.vector || null;
@@ -557,60 +545,5 @@ const CaptchaOcr = (() => {
     return total === 0 ? 0 : intersection / total;
   }
 
-  function getInkRatio(pixels) {
-    return pixels.reduce((total, value) => total + value, 0) / pixels.length;
-  }
-
-  function renderMask(binary, boxes) {
-    const canvas = document.createElement("canvas");
-    canvas.width = binary.width;
-    canvas.height = binary.height;
-    const ctx = canvas.getContext("2d");
-    const imageData = ctx.createImageData(binary.width, binary.height);
-
-    for (let i = 0; i < binary.pixels.length; i++) {
-      const offset = i * 4;
-      const value = binary.pixels[i] ? 255 : 18;
-      imageData.data[offset] = value;
-      imageData.data[offset + 1] = value;
-      imageData.data[offset + 2] = value;
-      imageData.data[offset + 3] = 255;
-    }
-
-    ctx.putImageData(imageData, 0, 0);
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = "#ff3b30";
-    for (const box of boxes) {
-      ctx.strokeRect(
-        box.minX,
-        box.minY,
-        Math.max(1, box.maxX - box.minX + 1),
-        Math.max(1, box.maxY - box.minY + 1)
-      );
-    }
-    return canvas.toDataURL("image/png");
-  }
-
-  function renderSegment(binary, box) {
-    const vector = normalizeVector(binary, box);
-    const canvas = document.createElement("canvas");
-    const scale = 4;
-    canvas.width = WIDTH * scale;
-    canvas.height = HEIGHT * scale;
-    const ctx = canvas.getContext("2d");
-    ctx.fillStyle = "#101827";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    for (let y = 0; y < HEIGHT; y++) {
-      for (let x = 0; x < WIDTH; x++) {
-        const value = Math.round((vector[y * WIDTH + x] || 0) * 255);
-        ctx.fillStyle = `rgb(${value},${value},${value})`;
-        ctx.fillRect(x * scale, y * scale, scale, scale);
-      }
-    }
-
-    return canvas.toDataURL("image/png");
-  }
-
-  return { train, recognize, debug };
+  return { train, recognize };
 })();
