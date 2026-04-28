@@ -17,6 +17,7 @@ Extension dung OCR local bang template matching, toi uu cho captcha co dinh 3 ky
 - `Selector anh captcha`: vi du `img.captcha`, `img[alt="Captcha"]`.
 - `Selector input`: vi du `input[name='captcha']`, `input[maxlength="3"][inputmode="numeric"]`.
 - `Selector form/nut submit`: vi du `form`, `#loginForm`, hoac `button[type='submit']`.
+- `Selector submit phu`: selector du phong neu nut submit chinh khong co hoac dang disabled, vi du `button.bg-red-600` hoac `text:Attack!`.
 - `Click truoc khi OCR`: selector cua input/button can click de captcha xuat hien, vi du `button.btn-primary`.
 - `Bat extension`: cong tac tong.
 - `Tu dien sau khi nhan dien`: tu dien ket qua OCR vao input.

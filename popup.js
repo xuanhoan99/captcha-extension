@@ -1,19 +1,4 @@
-const DEFAULTS = {
-  allowedHost: "localhost",
-  captchaSelector: "img.captcha",
-  inputSelector: "input[name='captcha']",
-  submitSelector: "form",
-  preClickSelector: "",
-  enabled: true,
-  autoFill: true,
-  autoSubmit: false,
-  autoWatch: false,
-  targetTabOnly: true,
-  submitDelayMs: 0,
-  preClickTimeoutMs: 10000,
-  maxTemplates: 400,
-  templates: []
-};
+const DEFAULTS = CaptchaDefaults;
 const OCR_TEMPLATE_VERSION = 7;
 
 const fields = {
@@ -21,6 +6,7 @@ const fields = {
   captchaSelector: document.querySelector("#captchaSelector"),
   inputSelector: document.querySelector("#inputSelector"),
   submitSelector: document.querySelector("#submitSelector"),
+  fallbackSubmitSelector: document.querySelector("#fallbackSubmitSelector"),
   preClickSelector: document.querySelector("#preClickSelector"),
   enabled: document.querySelector("#enabled"),
   autoFill: document.querySelector("#autoFill"),

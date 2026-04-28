@@ -1,19 +1,4 @@
-const DEFAULTS = {
-  allowedHost: "localhost",
-  captchaSelector: "img.captcha",
-  inputSelector: "input[name='captcha']",
-  submitSelector: "form",
-  preClickSelector: "",
-  enabled: true,
-  autoFill: true,
-  autoSubmit: false,
-  autoWatch: false,
-  targetTabOnly: true,
-  submitDelayMs: 0,
-  preClickTimeoutMs: 10000,
-  maxTemplates: 400,
-  templates: []
-};
+const DEFAULTS = CaptchaDefaults;
 
 let watcher = null;
 let watchedImage = null;
@@ -36,6 +21,7 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
     "captchaSelector",
     "inputSelector",
     "submitSelector",
+    "fallbackSubmitSelector",
     "preClickSelector",
     "allowedHost",
     "enabled",
@@ -111,6 +97,7 @@ async function runCaptchaTest(options = {}) {
     captchaSelector: settings.captchaSelector,
     inputSelector: settings.inputSelector,
     submitSelector: settings.submitSelector,
+    fallbackSubmitSelector: settings.fallbackSubmitSelector,
     preClickSelector: settings.preClickSelector,
     autoFill: settings.autoFill,
     autoSubmit: settings.autoSubmit,
@@ -143,7 +130,7 @@ async function runCaptchaTest(options = {}) {
       log("info", "Đợi trước khi submit", { delayMs });
       await sleep(delayMs);
     }
-    submit(settings.submitSelector);
+    submit(settings.submitSelector, settings.fallbackSubmitSelector);
     log("info", "Đã submit form");
   }
 
@@ -241,9 +228,10 @@ function setNativeValue(element, value) {
   }
 }
 
-function submit(selector) {
-  const target = document.querySelector(selector);
+function submit(selector, fallbackSelector = "") {
+  const target = findSubmitTarget(selector) || findSubmitTarget(fallbackSelector);
   if (!target) throw new Error("Không tìm thấy form/nút submit");
+  if (isDisabled(target)) throw new Error("Form/nút submit đang disabled");
 
   if (target instanceof HTMLFormElement) {
     target.requestSubmit();
@@ -251,6 +239,22 @@ function submit(selector) {
   }
 
   target.click();
+}
+
+function findSubmitTarget(selector) {
+  const normalized = (selector || "").trim();
+  if (!normalized) return null;
+
+  if (normalized.startsWith("text:")) {
+    const text = normalized.slice(5).trim();
+    return Array.from(document.querySelectorAll("button")).find((button) => {
+      return button.textContent.trim() === text && !isDisabled(button);
+    }) || null;
+  }
+
+  const target = document.querySelector(normalized);
+  if (!target || isDisabled(target)) return null;
+  return target;
 }
 
 async function setupWatcher() {
