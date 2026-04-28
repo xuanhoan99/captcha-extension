@@ -53,6 +53,28 @@ Extension chia deu `Max mau train` cho 10 digit `0-9`. Vi du `400` thi moi digit
 
 Import chi nhan mau dung OCR version hien tai.
 
+## Gop mau tu nhieu profile
+
+Dung script `scripts/merge-templates.js` de gop nhieu file JSON thanh mot file master:
+
+1. Tao thu muc `template-exports`.
+2. Copy cac file JSON export tu cac profile vao thu muc do.
+3. Chay:
+
+```powershell
+node scripts\merge-templates.js
+```
+
+Mac dinh script se tao `captcha-templates-master.json` voi toi da `600` mau, chia deu cho 10 digit.
+
+Co the truyen duong dan tuy chinh:
+
+```powershell
+node scripts\merge-templates.js template-exports captcha-templates-master.json 600
+```
+
+Sau do import `captcha-templates-master.json` vao cac profile can dung chung mau.
+
 ## Open Panel
 
 Bam `Open Panel` tu popup khi dang dung o tab captcha de mo giao dien extension thanh tab rieng. Panel se ghi nho tab captcha do de cac nut `Train tu input`, `Chay thu`, `Export`, `Import` van hoat dong dung tab test.
