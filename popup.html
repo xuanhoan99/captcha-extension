@@ -45,6 +45,10 @@
 
       <section class="panel switches">
         <label class="check">
+          <input type="checkbox" id="enabled">
+          Bật extension
+        </label>
+        <label class="check">
           <input type="checkbox" id="autoFill">
           Tự điền sau khi nhận diện
         </label>
@@ -84,6 +88,14 @@
         </div>
         <p id="templates">0 mẫu đã lưu</p>
         <div id="templateCounts"></div>
+      </section>
+
+      <section class="panel import-panel">
+        <div class="actions">
+          <button id="exportTemplates" type="button">Export mẫu</button>
+          <button id="importTemplates" type="button">Import mẫu</button>
+        </div>
+        <textarea id="templateJson" placeholder="Dán JSON mẫu train ở đây"></textarea>
       </section>
 
       <section class="panel debug-panel">

@@ -75,7 +75,24 @@ input {
   font: inherit;
 }
 
+textarea {
+  width: 100%;
+  min-height: 92px;
+  resize: vertical;
+  border: 1px solid #c7d0df;
+  border-radius: 6px;
+  padding: 8px;
+  color: #111827;
+  background: #fff;
+  font: 12px/1.4 Consolas, "Courier New", monospace;
+}
+
 input:focus {
+  outline: 2px solid #8bb4ff;
+  outline-offset: 1px;
+}
+
+textarea:focus {
   outline: 2px solid #8bb4ff;
   outline-offset: 1px;
 }

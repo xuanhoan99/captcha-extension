@@ -53,6 +53,16 @@ Bấm `Debug OCR` trong popup để xem ảnh mask sau xử lý và 3 vùng ký 
 
 Bấm `Open Panel` từ popup khi đang đứng ở tab captcha để mở giao diện extension thành tab riêng. Panel sẽ ghi nhớ tab captcha đó để các nút `Train`, `Chạy thử`, `Debug OCR`, `Train từ input` vẫn gửi lệnh về đúng trang test.
 
+## Bật/tắt extension
+
+Checkbox `Bật extension` là công tắc tổng. Khi tắt, extension sẽ không train, OCR, debug hoặc auto-watch nữa, nhưng vẫn giữ toàn bộ cấu hình và mẫu đã train.
+
+## Export/import mẫu train
+
+Bấm `Export mẫu` để copy JSON mẫu train hiện tại vào clipboard và hiển thị trong textarea. Trên máy khác, dán JSON đó vào textarea rồi bấm `Import mẫu`.
+
+Import chỉ nhận mẫu đúng OCR version hiện tại để tránh dùng nhầm dữ liệu cũ.
+
 ## Train nhanh khi OCR sai
 
 Khi `Tự submit sau khi điền` đang tắt, bạn có thể sửa lại mã captcha trực tiếp trong input trên trang rồi bấm `Train từ input` trong popup. Extension sẽ lấy giá trị input hiện tại và train ảnh captcha đang hiển thị, không click tạo captcha mới.

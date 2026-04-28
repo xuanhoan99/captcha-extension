@@ -5,6 +5,7 @@ const DEFAULTS = {
   submitSelector: "form",
   preClickSelector: "",
   captchaLength: 3,
+  enabled: true,
   autoFill: true,
   autoSubmit: false,
   allowAlphanumeric: false,
@@ -37,6 +38,7 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
     "preClickSelector",
     "allowedHost",
     "captchaLength",
+    "enabled",
     "autoFill",
     "autoSubmit",
     "submitDelayMs",
@@ -74,6 +76,7 @@ async function handleMessage(message) {
 
 async function trainCaptcha(value) {
   const settings = await getSettings();
+  assertEnabled(settings);
   log("info", "Bắt đầu train", {
     host: location.hostname,
     captchaSelector: settings.captchaSelector,
@@ -96,6 +99,7 @@ async function trainCaptcha(value) {
 
 async function trainCaptchaFromInput() {
   const settings = await getSettings();
+  assertEnabled(settings);
   assertAllowedHost(settings);
   const input = document.querySelector(settings.inputSelector);
   if (!input) throw new Error("Không tìm thấy input captcha");
@@ -125,6 +129,7 @@ async function trainCaptchaFromInput() {
 
 async function runCaptchaTest(options = {}) {
   const settings = await getSettings();
+  assertEnabled(settings);
   log("info", "Bắt đầu OCR", {
     host: location.hostname,
     captchaSelector: settings.captchaSelector,
@@ -173,6 +178,7 @@ async function runCaptchaTest(options = {}) {
 
 async function debugCaptchaImage() {
   const settings = await getSettings();
+  assertEnabled(settings);
   log("info", "Bắt đầu debug ảnh OCR", {
     captchaSelector: settings.captchaSelector,
     preClickSelector: settings.preClickSelector
@@ -209,6 +215,12 @@ function assertAllowedHost(settings) {
   }
   if (!location.hostname.includes(allowedHost)) {
     throw new Error(`Tab hiện tại không thuộc domain test: ${allowedHost}`);
+  }
+}
+
+function assertEnabled(settings) {
+  if (!settings.enabled) {
+    throw new Error("Extension đang tắt");
   }
 }
 
@@ -298,6 +310,10 @@ function normalizeCaptchaLength(value) {
 async function setupWatcher() {
   stopWatcher();
   const settings = await getSettings();
+  if (!settings.enabled) {
+    log("info", "Extension đang tắt, auto watch không chạy");
+    return;
+  }
   if (!settings.autoWatch) {
     log("info", "Auto watch đang tắt");
     return;
@@ -380,6 +396,10 @@ async function runWatchedCaptcha(reason, options = {}) {
   watchInFlight = true;
   try {
     const settings = await getSettings();
+    if (!settings.enabled) {
+      log("info", "Auto watch bỏ qua vì extension đang tắt", { reason });
+      return;
+    }
     if (!settings.autoWatch) return;
     assertAllowedHost(settings);
 
