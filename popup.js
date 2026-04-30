@@ -7,18 +7,24 @@ const fields = {
   inputSelector: document.querySelector("#inputSelector"),
   submitSelector: document.querySelector("#submitSelector"),
   fallbackSubmitSelector: document.querySelector("#fallbackSubmitSelector"),
+  cancelSelector: document.querySelector("#cancelSelector"),
+  incorrectCodeText: document.querySelector("#incorrectCodeText"),
   preClickSelector: document.querySelector("#preClickSelector"),
   enabled: document.querySelector("#enabled"),
   autoFill: document.querySelector("#autoFill"),
   autoSubmit: document.querySelector("#autoSubmit"),
+  autoRetryOnIncorrect: document.querySelector("#autoRetryOnIncorrect"),
   autoWatch: document.querySelector("#autoWatch"),
   targetTabOnly: document.querySelector("#targetTabOnly"),
   submitDelayMs: document.querySelector("#submitDelayMs"),
+  incorrectWaitMs: document.querySelector("#incorrectWaitMs"),
+  retryAfterCancelMs: document.querySelector("#retryAfterCancelMs"),
   preClickTimeoutMs: document.querySelector("#preClickTimeoutMs"),
   maxTemplates: document.querySelector("#maxTemplates")
 };
 
 const statusEl = document.querySelector("#status");
+const buildVersionEl = document.querySelector("#buildVersion");
 const templatesEl = document.querySelector("#templates");
 const logEl = document.querySelector("#log");
 const templateCountsEl = document.querySelector("#templateCounts");
@@ -29,6 +35,7 @@ init();
 
 async function init() {
   const settings = await chrome.storage.local.get(DEFAULTS);
+  buildVersionEl.textContent = `Build: ${DEFAULTS.buildVersion}`;
   for (const [key, input] of Object.entries(fields)) {
     if (input.type === "checkbox") {
       input.checked = Boolean(settings[key]);

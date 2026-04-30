@@ -34,6 +34,12 @@ h1 {
   font-weight: 700;
 }
 
+#buildVersion {
+  margin: -6px 0 10px;
+  color: #68778c;
+  font: 11px/1.3 Consolas, "Courier New", monospace;
+}
+
 #status {
   min-width: 76px;
   color: #3f5f95;

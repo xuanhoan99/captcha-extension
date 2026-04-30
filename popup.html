@@ -15,14 +15,15 @@
           <span id="status">Ready</span>
         </div>
       </header>
+      <p id="buildVersion">Build: loading</p>
 
       <section class="panel">
         <label>
           Domain test
-          <input id="allowedHost" placeholder="vd: localhost hoặc example.test">
+          <input id="allowedHost" placeholder="vd: localhost hoac example.test">
         </label>
         <label>
-          Selector ảnh captcha
+          Selector anh captcha
           <input id="captchaSelector" placeholder="vd: img.captcha">
         </label>
         <label>
@@ -30,39 +31,51 @@
           <input id="inputSelector" placeholder="vd: input[name=captcha]">
         </label>
         <label>
-          Selector form/nút submit
-          <input id="submitSelector" placeholder="vd: form hoặc button[type=submit]">
+          Selector form/nut submit
+          <input id="submitSelector" placeholder="vd: form hoac button[type=submit]">
         </label>
         <label>
-          Selector submit phụ
+          Selector submit phu
           <input id="fallbackSubmitSelector" placeholder="vd: button.bg-red-600">
         </label>
         <label>
-          Click trước khi OCR
-          <input id="preClickSelector" placeholder="vd: input[name=phone] hoặc button.send-code">
+          Selector nut Cancel khi sai
+          <input id="cancelSelector" placeholder="vd: text:CANCEL">
+        </label>
+        <label>
+          Text bao sai captcha
+          <input id="incorrectCodeText" placeholder="vd: Incorrect code">
+        </label>
+        <label>
+          Click truoc khi OCR
+          <input id="preClickSelector" placeholder="vd: input[name=phone] hoac button.send-code">
         </label>
       </section>
 
       <section class="panel switches">
         <label class="check">
           <input type="checkbox" id="enabled">
-          Bật extension
+          Bat extension
         </label>
         <label class="check">
           <input type="checkbox" id="autoFill">
-          Tự điền sau khi nhận diện
+          Tu dien sau khi nhan dien
         </label>
         <label class="check">
           <input type="checkbox" id="autoSubmit">
-          Tự submit sau khi điền
+          Tu submit sau khi dien
+        </label>
+        <label class="check">
+          <input type="checkbox" id="autoRetryOnIncorrect">
+          Tu Cancel va chay lai khi sai
         </label>
         <label class="check">
           <input type="checkbox" id="autoWatch">
-          Tự phát hiện captcha
+          Tu phat hien captcha
         </label>
         <label class="check">
           <input type="checkbox" id="targetTabOnly">
-          Chỉ chạy tab target
+          Chi chay tab target
         </label>
       </section>
 
@@ -72,30 +85,38 @@
           <input id="submitDelayMs" type="number" min="0" step="100" placeholder="vd: 1000">
         </label>
         <label>
-          Chờ click enable (ms)
+          Cho bao sai (ms)
+          <input id="incorrectWaitMs" type="number" min="0" step="100" placeholder="vd: 1800">
+        </label>
+        <label>
+          Delay chay lai sau Cancel (ms)
+          <input id="retryAfterCancelMs" type="number" min="0" step="100" placeholder="vd: 800">
+        </label>
+        <label>
+          Cho click enable (ms)
           <input id="preClickTimeoutMs" type="number" min="0" step="1000" placeholder="vd: 10000">
         </label>
         <label>
-          Max mẫu train
+          Max mau train
           <input id="maxTemplates" type="number" min="10" step="10" placeholder="vd: 400">
         </label>
         <div class="actions">
-          <button id="trainFromInput" type="button">Train từ input</button>
-          <button id="run">Chạy thử</button>
-          <button id="clear">Xóa mẫu</button>
+          <button id="trainFromInput" type="button">Train tu input</button>
+          <button id="run">Chay thu</button>
+          <button id="clear">Xoa mau</button>
         </div>
-        <p id="templates">0 mẫu đã lưu</p>
+        <p id="templates">0 mau da luu</p>
         <div id="templateCounts"></div>
       </section>
 
       <section class="panel import-panel">
         <div class="actions">
           <button id="exportTemplates" type="button">Export file JSON</button>
-          <button id="chooseTemplateFile" type="button">Chọn file JSON</button>
+          <button id="chooseTemplateFile" type="button">Chon file JSON</button>
           <button id="importTemplates" type="button">Import file</button>
         </div>
         <input id="templateFile" type="file" accept="application/json,.json">
-        <textarea id="templateJson" placeholder="Dán JSON mẫu train ở đây"></textarea>
+        <textarea id="templateJson" placeholder="Dan JSON mau train o day"></textarea>
       </section>
 
       <section class="panel log-panel">

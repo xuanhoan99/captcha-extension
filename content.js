@@ -9,6 +9,8 @@ let lastWatchRunAt = 0;
 let watchTimer = 0;
 let missingCaptchaRetries = 0;
 
+log("info", "Content script loaded", { buildVersion: DEFAULTS.buildVersion });
+
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   handleMessage(message).then(sendResponse);
   return true;
@@ -22,13 +24,18 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
     "inputSelector",
     "submitSelector",
     "fallbackSubmitSelector",
+    "cancelSelector",
+    "incorrectCodeText",
     "preClickSelector",
     "allowedHost",
     "enabled",
     "targetTabOnly",
     "autoFill",
     "autoSubmit",
+    "autoRetryOnIncorrect",
     "submitDelayMs",
+    "incorrectWaitMs",
+    "retryAfterCancelMs",
     "preClickTimeoutMs",
     "maxTemplates",
     "templates"
@@ -98,13 +105,19 @@ async function runCaptchaTest(options = {}) {
     inputSelector: settings.inputSelector,
     submitSelector: settings.submitSelector,
     fallbackSubmitSelector: settings.fallbackSubmitSelector,
+    cancelSelector: settings.cancelSelector,
+    incorrectCodeText: settings.incorrectCodeText,
     preClickSelector: settings.preClickSelector,
     autoFill: settings.autoFill,
     autoSubmit: settings.autoSubmit,
+    autoRetryOnIncorrect: settings.autoRetryOnIncorrect,
     submitDelayMs: normalizeDelay(settings.submitDelayMs),
     templates: settings.templates.length
   });
   assertAllowedHost(settings);
+  if (!options.skipPreClick && await cancelIncorrectState(settings, { reschedule: false })) {
+    return { ok: true, retried: true };
+  }
   if (!options.skipPreClick) {
     const clicked = await clickBeforeCaptcha(settings);
     if (!clicked) {
@@ -132,6 +145,7 @@ async function runCaptchaTest(options = {}) {
     }
     submit(settings.submitSelector, settings.fallbackSubmitSelector);
     log("info", "Đã submit form");
+    await retryWhenIncorrect(settings, options);
   }
 
   return { ok: true, text };
@@ -241,20 +255,109 @@ function submit(selector, fallbackSelector = "") {
   target.click();
 }
 
+async function retryWhenIncorrect(settings, options = {}) {
+  const incorrectText = (settings.incorrectCodeText || "").trim();
+  if (!settings.autoRetryOnIncorrect || !incorrectText) return false;
+
+  const waitMs = normalizeDelay(settings.incorrectWaitMs) || 1800;
+  const found = await waitForText(incorrectText, waitMs);
+  if (!found) return false;
+
+  return cancelIncorrectState(settings, {
+    reschedule: true,
+    retryingAfterIncorrect: options.retryingAfterIncorrect
+  });
+}
+
+async function cancelIncorrectState(settings, options = {}) {
+  if (!settings.autoRetryOnIncorrect) return false;
+
+  const incorrectText = (settings.incorrectCodeText || "").trim();
+  const cancelSelector = (settings.cancelSelector || "").trim();
+  if (!incorrectText || !cancelSelector || !pageContainsText(incorrectText)) return false;
+
+  log("warn", "Phát hiện mã captcha sai, bấm Cancel để thực hiện lại", {
+    incorrectText,
+    cancelSelector
+  });
+
+  const cancel = await waitForClickable(cancelSelector, 1500, { skipWhenDisabled: true });
+  if (!cancel) {
+    log("warn", "Không thấy nút Cancel không disabled sau khi captcha sai", { cancelSelector });
+    return true;
+  }
+
+  cancel.scrollIntoView({ block: "center", inline: "center" });
+  cancel.click();
+  lastCaptchaKey = "";
+
+  const retryDelayMs = normalizeDelay(settings.retryAfterCancelMs) || 800;
+  log("info", "Đã bấm Cancel sau khi captcha sai", { retryDelayMs, reschedule: Boolean(options.reschedule) });
+  if (options.reschedule && settings.autoWatch) {
+    window.setTimeout(() => {
+      scheduleWatchRun("incorrect-code-cancel", { force: true });
+    }, retryDelayMs);
+  } else if (options.reschedule && !options.retryingAfterIncorrect) {
+    window.setTimeout(() => {
+      runCaptchaTest({ retryingAfterIncorrect: true }).catch((error) => {
+        log("error", "Chạy lại sau khi Cancel lỗi", { message: error.message });
+      });
+    }, retryDelayMs);
+  }
+
+  return true;
+}
+
+function waitForText(text, timeoutMs) {
+  if (pageContainsText(text)) return Promise.resolve(true);
+
+  return new Promise((resolve) => {
+    const timeout = window.setTimeout(() => done(false), timeoutMs);
+    const observer = new MutationObserver(() => {
+      if (pageContainsText(text)) {
+        done(true);
+      }
+    });
+
+    observer.observe(document.documentElement, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+      attributes: true,
+      attributeFilter: ["class", "style", "hidden", "aria-hidden"]
+    });
+
+    function done(found) {
+      window.clearTimeout(timeout);
+      observer.disconnect();
+      resolve(found);
+    }
+  });
+}
+
+function pageContainsText(text) {
+  return document.body?.innerText?.toLowerCase().includes(text.toLowerCase()) || false;
+}
+
 function findSubmitTarget(selector) {
   const normalized = (selector || "").trim();
   if (!normalized) return null;
 
   if (normalized.startsWith("text:")) {
     const text = normalized.slice(5).trim();
-    return Array.from(document.querySelectorAll("button")).find((button) => {
-      return button.textContent.trim() === text && !isDisabled(button);
-    }) || null;
+    return findButtonByText(text);
   }
 
   const target = document.querySelector(normalized);
   if (!target || isDisabled(target)) return null;
   return target;
+}
+
+function findButtonByText(text) {
+  const normalized = text.toLowerCase();
+  return Array.from(document.querySelectorAll("button")).find((button) => {
+    return button.textContent.trim().toLowerCase() === normalized && !isDisabled(button);
+  }) || null;
 }
 
 async function setupWatcher() {
@@ -361,6 +464,10 @@ async function runWatchedCaptcha(reason, options = {}) {
     }
     assertAllowedHost(settings);
 
+    if (await cancelIncorrectState(settings, { reschedule: true })) {
+      return;
+    }
+
     const clicked = await clickBeforeCaptcha(settings, { skipWhenDisabled: true });
     if (!clicked) {
       log("info", "Auto watch bỏ qua vì nút click trước đang disabled", {
@@ -427,7 +534,7 @@ async function clickBeforeCaptcha(settings, options = {}) {
 async function waitForClickable(selector, timeoutMs, options = {}) {
   const startedAt = Date.now();
   while (Date.now() - startedAt <= timeoutMs) {
-    const target = document.querySelector(selector);
+    const target = findClickableTarget(selector);
     if (!target) {
       await sleep(250);
       continue;
@@ -450,6 +557,15 @@ async function waitForClickable(selector, timeoutMs, options = {}) {
   }
 
   throw new Error(`Element cần click chưa sẵn sàng: ${selector}`);
+}
+
+function findClickableTarget(selector) {
+  const normalized = (selector || "").trim();
+  if (!normalized) return null;
+  if (normalized.startsWith("text:")) {
+    return findButtonByText(normalized.slice(5).trim());
+  }
+  return document.querySelector(normalized);
 }
 
 function waitForEnabledOrTimeout(target, timeoutMs) {
