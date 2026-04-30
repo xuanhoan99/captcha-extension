@@ -202,3 +202,33 @@ button#clear {
   white-space: pre-wrap;
   font: 12px/1.4 Consolas, "Courier New", monospace;
 }
+
+.ai-panel h2 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.ai-panel select {
+  width: 100%;
+  min-height: 34px;
+  border: 1px solid #c7d0df;
+  border-radius: 6px;
+  padding: 7px 9px;
+  color: #111827;
+  background: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+
+.ai-panel select:focus {
+  outline: 2px solid #8bb4ff;
+  outline-offset: 1px;
+}
+
+.ai-status {
+  margin: 0;
+  font-size: 12px;
+  color: #516174;
+}

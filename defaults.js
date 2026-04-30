@@ -13,5 +13,10 @@ const CaptchaDefaults = {
   submitDelayMs: 1000,
   preClickTimeoutMs: 1000,
   maxTemplates: 600,
-  templates: []
+  templates: [],
+  aiEnabled: false,
+  aiProvider: "gemini",
+  aiModel: "",
+  aiApiKey: "",
+  aiAutoTrain: true
 };

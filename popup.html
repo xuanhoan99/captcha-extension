@@ -98,6 +98,34 @@
         <textarea id="templateJson" placeholder="Dán JSON mẫu train ở đây"></textarea>
       </section>
 
+      <section class="panel ai-panel">
+        <h2>🤖 AI Model</h2>
+        <label class="check">
+          <input type="checkbox" id="aiEnabled">
+          Bật AI xác minh
+        </label>
+        <label class="check">
+          <input type="checkbox" id="aiAutoTrain">
+          Tự train khi AI ≠ OCR
+        </label>
+        <label>
+          Provider
+          <select id="aiProvider">
+            <option value="gemini">Gemini</option>
+            <option value="openai">OpenAI (GPT)</option>
+          </select>
+        </label>
+        <label>
+          API Key
+          <input id="aiApiKey" type="password" placeholder="Dán API key ở đây" autocomplete="off">
+        </label>
+        <label>
+          Model (tuỳ chọn)
+          <input id="aiModel" placeholder="vd: gemini-2.0-flash hoặc gpt-4o-mini">
+        </label>
+        <p id="aiStatus" class="ai-status"></p>
+      </section>
+
       <section class="panel log-panel">
         <div class="log-head">
           <strong>Log test</strong>

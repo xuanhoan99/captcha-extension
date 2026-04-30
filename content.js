@@ -102,7 +102,9 @@ async function runCaptchaTest(options = {}) {
     autoFill: settings.autoFill,
     autoSubmit: settings.autoSubmit,
     submitDelayMs: normalizeDelay(settings.submitDelayMs),
-    templates: settings.templates.length
+    templates: settings.templates.length,
+    aiEnabled: settings.aiEnabled,
+    aiProvider: settings.aiProvider
   });
   assertAllowedHost(settings);
   if (!options.skipPreClick) {
@@ -112,8 +114,77 @@ async function runCaptchaTest(options = {}) {
     }
   }
   const img = await findReadyImage(settings.captchaSelector);
-  const text = await CaptchaOcr.recognize(img, settings.templates);
-  log("info", "OCR nhận diện xong", { text });
+  const ocrText = await CaptchaOcr.recognize(img, settings.templates);
+  log("info", "OCR nhận diện xong", { ocrText });
+
+  // AI verification: send image to AI model and compare results
+  let finalText = ocrText;
+  let aiSource = false;
+
+  if (settings.aiEnabled) {
+    try {
+      const base64Data = imageToBase64(img);
+      log("info", "Đang gửi ảnh captcha tới AI model", {
+        provider: settings.aiProvider,
+        model: settings.aiModel || "(mặc định)"
+      });
+
+      const aiResponse = await chrome.runtime.sendMessage({
+        type: "AI_RECOGNIZE_CAPTCHA",
+        base64: base64Data.base64,
+        mimeType: base64Data.mimeType
+      });
+
+      if (aiResponse?.ok && aiResponse.text) {
+        const aiText = aiResponse.text;
+        log("info", "AI nhận diện xong", { aiText, ocrText });
+
+        if (aiText === ocrText) {
+          log("info", "✅ OCR và AI khớp nhau, dùng kết quả OCR", { text: ocrText });
+          finalText = ocrText;
+        } else {
+          log("warn", "⚠️ OCR và AI khác nhau, dùng kết quả AI", {
+            ocrText,
+            aiText
+          });
+          finalText = aiText;
+          aiSource = true;
+
+          // Auto-train from AI result to improve OCR templates
+          if (settings.aiAutoTrain) {
+            try {
+              const newTemplates = await CaptchaOcr.train(img, aiText);
+              const latest = await getSettings();
+              const templates = balanceTemplates(
+                [...latest.templates, ...newTemplates],
+                latest.maxTemplates
+              );
+              await chrome.storage.local.set({ templates });
+              log("info", "🧠 Auto-train từ AI thành công", {
+                aiText,
+                added: newTemplates.length,
+                totalTemplates: templates.length
+              });
+            } catch (trainError) {
+              log("error", "Auto-train từ AI lỗi", {
+                message: trainError.message
+              });
+            }
+          }
+        }
+      } else {
+        log("warn", "AI không trả kết quả, dùng OCR", {
+          error: aiResponse?.error || "Không rõ"
+        });
+      }
+    } catch (aiError) {
+      log("error", "Gọi AI lỗi, dùng kết quả OCR", {
+        message: aiError.message
+      });
+    }
+  }
+
+  const text = finalText;
 
   if (settings.autoFill) {
     const input = document.querySelector(settings.inputSelector);
@@ -121,7 +192,7 @@ async function runCaptchaTest(options = {}) {
     setNativeValue(input, text);
     input.dispatchEvent(new Event("input", { bubbles: true }));
     input.dispatchEvent(new Event("change", { bubbles: true }));
-    log("info", "Đã điền input captcha", { text });
+    log("info", "Đã điền input captcha", { text, source: aiSource ? "AI" : "OCR" });
   }
 
   if (settings.autoSubmit) {
@@ -134,7 +205,7 @@ async function runCaptchaTest(options = {}) {
     log("info", "Đã submit form");
   }
 
-  return { ok: true, text };
+  return { ok: true, text, source: aiSource ? "AI" : "OCR" };
 }
 
 async function getSettings() {
@@ -576,6 +647,21 @@ function fingerprintImage(img) {
   } catch (error) {
     return `${Date.now()}`;
   }
+}
+
+function imageToBase64(img) {
+  const canvas = document.createElement("canvas");
+  canvas.width = img.naturalWidth || img.width;
+  canvas.height = img.naturalHeight || img.height;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(img, 0, 0);
+  const dataUrl = canvas.toDataURL("image/png");
+  const parts = dataUrl.split(",");
+  const mimeMatch = parts[0].match(/:(.*?);/);
+  return {
+    base64: parts[1],
+    mimeType: mimeMatch ? mimeMatch[1] : "image/png"
+  };
 }
 
 function balanceTemplates(templates, maxTemplates = 400) {

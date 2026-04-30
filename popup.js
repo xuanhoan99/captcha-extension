@@ -15,7 +15,12 @@ const fields = {
   targetTabOnly: document.querySelector("#targetTabOnly"),
   submitDelayMs: document.querySelector("#submitDelayMs"),
   preClickTimeoutMs: document.querySelector("#preClickTimeoutMs"),
-  maxTemplates: document.querySelector("#maxTemplates")
+  maxTemplates: document.querySelector("#maxTemplates"),
+  aiEnabled: document.querySelector("#aiEnabled"),
+  aiAutoTrain: document.querySelector("#aiAutoTrain"),
+  aiProvider: document.querySelector("#aiProvider"),
+  aiApiKey: document.querySelector("#aiApiKey"),
+  aiModel: document.querySelector("#aiModel")
 };
 
 const statusEl = document.querySelector("#status");
@@ -34,6 +39,8 @@ async function init() {
       input.checked = Boolean(settings[key]);
     } else if (input.type === "number") {
       input.value = Number.isFinite(Number(settings[key])) ? String(settings[key]) : "";
+    } else if (input.tagName === "SELECT") {
+      input.value = settings[key] || input.options[0]?.value || "";
     } else {
       input.value = settings[key] || "";
     }
@@ -69,6 +76,8 @@ async function saveSettings() {
       next[key] = input.checked;
     } else if (input.type === "number") {
       next[key] = Math.max(0, Number.parseInt(input.value, 10) || 0);
+    } else if (input.tagName === "SELECT") {
+      next[key] = input.value;
     } else {
       next[key] = input.value.trim();
     }
@@ -108,8 +117,9 @@ async function runOnce() {
   appendLog("info", "Bắt đầu chạy OCR");
   const response = await sendToActiveTab({ type: "RUN_CAPTCHA_TEST" });
   if (response?.ok) {
-    setStatus(response.text || "Done");
-    appendLog("info", "Chạy OCR xong", response);
+    const sourceLabel = response.source === "AI" ? " [AI]" : " [OCR]";
+    setStatus((response.text || "Done") + sourceLabel);
+    appendLog("info", "Chạy xong" + sourceLabel, response);
   } else {
     setStatus(response?.error || "Lỗi");
     appendLog("error", "Chạy OCR lỗi", response);

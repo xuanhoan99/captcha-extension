@@ -79,6 +79,40 @@ Sau do import `captcha-templates-master.json` vao cac profile can dung chung mau
 
 Bam `Open Panel` tu popup khi dang dung o tab captcha de mo giao dien extension thanh tab rieng. Panel se ghi nho tab captcha do de cac nut `Train tu input`, `Chay thu`, `Export`, `Import` van hoat dong dung tab test.
 
+## AI Model (xac minh bang AI)
+
+Extension ho tro dung AI Vision (Gemini hoac OpenAI GPT) de xac minh ket qua OCR va tu dong hoc them mau.
+
+### Cau hinh
+
+- `Bat AI xac minh`: cong tac bat/tat AI.
+- `Tu train khi AI ≠ OCR`: tu dong train mau moi tu ket qua AI khi AI va OCR khac nhau.
+- `Provider`: chon `Gemini` hoac `OpenAI (GPT)`.
+- `API Key`: API key cua provider da chon.
+- `Model`: ten model tuy chon. De trong se dung model mac dinh (`gemini-2.0-flash` cho Gemini, `gpt-4o-mini` cho OpenAI).
+
+### Cach hoat dong
+
+1. OCR local chay truoc, tra ve ket qua dua tren template matching.
+2. Neu AI bat, anh captcha duoc gui toi AI model de nhan dien.
+3. So sanh hai ket qua:
+   - **Khop nhau**: dung ket qua OCR (do tin cao).
+   - **Khac nhau**: dung ket qua AI va tu dong train mau OCR tu ket qua AI (neu bat `Tu train khi AI ≠ OCR`).
+4. Neu AI loi hoac khong tra ket qua, extension van dung ket qua OCR binh thuong.
+
+### Provider duoc ho tro
+
+| Provider | Model mac dinh | API Key |
+|----------|---------------|---------|
+| Gemini | `gemini-2.0-flash` | Lay tu [Google AI Studio](https://aistudio.google.com/apikey) |
+| OpenAI | `gpt-4o-mini` | Lay tu [OpenAI Platform](https://platform.openai.com/api-keys) |
+
+### Luu y
+
+- AI goi API moi lan OCR nen se ton API credit. Co the tat AI sau khi da train du mau.
+- API call duoc thuc hien tu background service worker nen khong bi CORS.
+- Ket qua hien thi trong status va log se ghi ro nguon `[OCR]` hoac `[AI]`.
+
 ## Log
 
 - Popup co khung `Log test`.
